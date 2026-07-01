@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Papa from "papaparse";
 import {
   Cake,
@@ -409,6 +409,25 @@ function buildCardSVG(key, message, signature) {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+const STORE_PREFIX = "clientCardStudio:";
+
+function loadSaved(key, fallback) {
+  try {
+    const raw = localStorage.getItem(STORE_PREFIX + key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveValue(key, value) {
+  try {
+    localStorage.setItem(STORE_PREFIX + key, JSON.stringify(value));
+  } catch {
+    /* storage unavailable — fail quietly */
+  }
+}
+
 export default function ClientCardStudio() {
   const [occKey, setOccKey] = useState("birthday");
   const [tplIndex, setTplIndex] = useState(0);
@@ -418,12 +437,17 @@ export default function ClientCardStudio() {
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState("create");
   const [finderMonth, setFinderMonth] = useState(() => new Date().getMonth());
-  const [roster, setRoster] = useState(SAMPLE_ROSTER);
-  const [rosterSource, setRosterSource] = useState({ type: "sample", name: "" });
+  const [roster, setRoster] = useState(() => loadSaved("roster", SAMPLE_ROSTER));
+  const [rosterSource, setRosterSource] = useState(() => loadSaved("rosterSource", { type: "sample", name: "" }));
   const [rosterStatus, setRosterStatus] = useState(null); // { ok: boolean, text: string }
-  const [cardLog, setCardLog] = useState([]); // session-only record of cards made
+  const [cardLog, setCardLog] = useState(() => loadSaved("cardLog", [])); // saved record of cards made
   const [activeClientId, setActiveClientId] = useState(null); // links a card to a roster person
   const fileRef = useRef(null);
+
+  // Save the user's data to this browser whenever it changes (Option A).
+  useEffect(() => saveValue("roster", roster), [roster]);
+  useEffect(() => saveValue("rosterSource", rosterSource), [rosterSource]);
+  useEffect(() => saveValue("cardLog", cardLog), [cardLog]);
 
   const thisYear = new Date().getFullYear();
 
@@ -608,12 +632,12 @@ export default function ClientCardStudio() {
 
       <header className="cc-header">
         <div>
-          <p className="cc-eyebrow">Client Card Program · Phase 1 + 2 prototype</p>
+          <p className="cc-eyebrow">Client Card Program</p>
           <h1 className="cc-title">Client Card Studio</h1>
         </div>
         <span className="cc-badge">
           <Info size={13} strokeWidth={2.2} />
-          Sample data only — nothing is saved
+          Saved in this browser
         </span>
       </header>
 
